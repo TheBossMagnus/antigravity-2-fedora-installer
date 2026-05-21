@@ -204,19 +204,33 @@ if [[ "$INSTALL_SCOPE" == "system" && -f "$LOCAL_SHADOW_FILE" ]]; then
         echo -e "${RED}Warning: Please manually remove or rename $LOCAL_SHADOW_FILE to see the new version.${NC}"
     fi
 fi
-DESKTOP_TEMPLATE="$(dirname "$0")/antigravity.desktop.template"
-
-if [[ ! -f "$DESKTOP_TEMPLATE" ]]; then
-    echo -e "${RED}Error: Application launcher template not found: $DESKTOP_TEMPLATE${NC}" >&2
-    exit 1
-fi
-
 # Clean up older, duplicate desktop launchers to prevent duplicate launcher shortcuts
 escalate_cmd rm -f "$DESKTOP_ENTRY_DIR/antigravity-2.desktop"
 
-# Process the template file and place it in the application menu path
+# Generate the desktop integration template dynamically in the secure temp directory
 TEMP_DESKTOP="$TEMP_DIR/antigravity.desktop"
-cp "$DESKTOP_TEMPLATE" "$TEMP_DESKTOP"
+cat << 'EOF' > "$TEMP_DESKTOP"
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=__NAME__
+Comment=__COMMENT__
+GenericName=Text Editor
+Exec=__EXEC_PATH__ --ozone-platform-hint=wayland --enable-features=WaylandWindowDecorations,CanvasOopRasterization --enable-gpu-rasterization --enable-zero-copy %F
+Icon=__ICON_PATH__
+Terminal=false
+Categories=Development;IDE;TextEditor;
+MimeType=application/x-antigravity-workspace;
+StartupNotify=true
+StartupWMClass=Antigravity
+Actions=new-empty-window;
+Keywords=vscode;
+
+[Desktop Action new-empty-window]
+Name=New Empty Window
+Exec=__EXEC_PATH__ --ozone-platform-hint=wayland --enable-features=WaylandWindowDecorations,CanvasOopRasterization --enable-gpu-rasterization --enable-zero-copy --new-window %F
+Icon=__ICON_PATH__
+EOF
 
 sed -i "s|__NAME__|Antigravity 2.0|g" "$TEMP_DESKTOP"
 sed -i "s|__COMMENT__|Experience liftoff (v2.0 Standalone)|g" "$TEMP_DESKTOP"
