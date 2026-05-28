@@ -188,6 +188,7 @@ if [[ "$INSTALL_SCOPE" == "system" ]]; then
     DESKTOP_ENTRY_DIR="/usr/share/applications"
     DESKTOP_ENTRY_PATH="${DESKTOP_ENTRY_DIR}/${APP_NAME_SHORT}.desktop"
     ICON_LOOKUP_NAME="antigravity" # Force native asset resource name for desktop styling
+    ICON_TARGET_DIR="/usr/share/pixmaps"
 else
     TARGET_PARENT_DIR="$HOME/.local/share"
     TARGET_APP_DIR="$HOME/.local/share/${APP_NAME_SHORT}-Linux"
@@ -195,6 +196,7 @@ else
     DESKTOP_ENTRY_DIR="$HOME/.local/share/applications"
     DESKTOP_ENTRY_PATH="${DESKTOP_ENTRY_DIR}/${APP_NAME_SHORT}.desktop"
     ICON_LOOKUP_NAME="antigravity" # Force native asset resource name for desktop styling
+    ICON_TARGET_DIR="$HOME/.local/share/pixmaps"
 fi
 
 # Detect currently installed version
@@ -295,6 +297,27 @@ if [[ "$HTTP_CODE" -ne 200 ]]; then
     exit 1
 fi
 echo -e "${GREEN}✓ Downloaded successfully.${NC}"
+
+# Retrieve application icon (local copy or download fallback)
+echo -e "${YELLOW}Retrieving application icon...${NC}"
+LOCAL_ICON="$(dirname "$0")/antigravity.png"
+if [[ -f "$LOCAL_ICON" ]]; then
+    echo -e "${GREEN}✓ Found local icon file.${NC}"
+    cp "$LOCAL_ICON" "$TEMP_DIR/antigravity.png"
+else
+    ICON_URL="https://raw.githubusercontent.com/jssroberto/antigravity-2-fedora-installer/main/antigravity.png"
+    if [[ "$DRY_RUN" == "true" ]]; then
+        echo -e "${BLUE}[DRY RUN] Would download icon from: $ICON_URL${NC}"
+    else
+        echo -e "${YELLOW}Downloading icon from mirror...${NC}"
+        ICON_HTTP_CODE=$(curl -sSL -w "%{http_code}" -o "$TEMP_DIR/antigravity.png" "$ICON_URL")
+        if [[ "$ICON_HTTP_CODE" -ne 200 ]]; then
+            echo -e "${RED}Error: Icon download failed with HTTP status code $ICON_HTTP_CODE${NC}" >&2
+            exit 1
+        fi
+        echo -e "${GREEN}✓ Icon downloaded successfully.${NC}"
+    fi
+fi
 
 # Extract package and install files (Skip if --dry-run)
 if [[ "$DRY_RUN" == "true" ]]; then
@@ -465,6 +488,12 @@ escalate_cmd mkdir -p "$DESKTOP_ENTRY_DIR"
 escalate_cmd cp "$TEMP_DESKTOP" "$DESKTOP_ENTRY_PATH"
 escalate_cmd chmod 644 "$DESKTOP_ENTRY_PATH"
 
+# Install application icon to search path
+echo -e "${YELLOW}Installing application icon...${NC}"
+escalate_cmd mkdir -p "$ICON_TARGET_DIR"
+escalate_cmd cp "$TEMP_DIR/antigravity.png" "$ICON_TARGET_DIR/antigravity.png"
+escalate_cmd chmod 644 "$ICON_TARGET_DIR/antigravity.png"
+
 # SELinux context restoration for system installations on Fedora
 if [[ "$INSTALL_SCOPE" == "system" ]] && command -v restorecon &> /dev/null; then
     echo -e "${YELLOW}Restoring SELinux contexts for $TARGET_APP_DIR...${NC}"
@@ -474,6 +503,9 @@ fi
 # Update desktop application databases
 echo -e "${YELLOW}Updating desktop database shortcuts...${NC}"
 escalate_cmd update-desktop-database "$DESKTOP_ENTRY_DIR" || true
+
+# Force GNOME Shell to reload launcher and icon textures immediately
+escalate_cmd touch "$DESKTOP_ENTRY_PATH"
 
 echo -e "${GREEN}${BOLD}✓ ${APP_NAME_PRETTY} successfully installed!${NC}"
 echo -e "You can launch the application via:"
