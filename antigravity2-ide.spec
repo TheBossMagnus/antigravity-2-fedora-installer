@@ -9,7 +9,7 @@
 
 
 Name:           antigravity2-ide
-Version:        2.1.4
+Version:        2.1.1
 Release:        1%{?dist}
 Summary:        Antigravity 2.0 IDE
 

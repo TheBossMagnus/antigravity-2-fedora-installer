@@ -27,7 +27,7 @@ NC='\033[0m' # No Color
 INSTALL_SCOPE="system"
 APP_MODE="" # Starts empty to force interaction if not provided
 
-VERSION_IDE="2.1.4"
+VERSION_IDE="2.1.1"
 VERSION_AGENT="2.1.4"
 APP_VERSION=""
 
